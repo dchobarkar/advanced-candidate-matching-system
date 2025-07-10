@@ -187,10 +187,10 @@ export class MatchingService {
       explanation += `Their experience levels align well with the job requirements. `;
     } else {
       const smallGaps = breakdown.experienceGaps.filter(
-        (gap: any) => gap.gap <= 6
+        (gap: { skillId: string; gap: number }) => gap.gap <= 6
       );
       const largeGaps = breakdown.experienceGaps.filter(
-        (gap: any) => gap.gap > 6
+        (gap: { skillId: string; gap: number }) => gap.gap > 6
       );
 
       if (smallGaps.length > 0) {
@@ -244,13 +244,15 @@ export class MatchingService {
     }
 
     // Experience gap recommendations
+    type ExperienceGap = { skillId: string; gap: number };
     const significantGaps = breakdown.experienceGaps.filter(
-      (gap: any) => gap.gap > 6
+      (gap: ExperienceGap) => gap.gap > 6
     );
     if (significantGaps.length > 0) {
       const gapSkills = significantGaps
         .map(
-          (gap: any) => skillNormalizer.getSkillById(gap.skillId)?.canonicalName
+          (gap: ExperienceGap) =>
+            skillNormalizer.getSkillById(gap.skillId)?.canonicalName
         )
         .filter(Boolean);
 
@@ -311,7 +313,7 @@ export class MatchingService {
 
     // Reduce confidence for significant gaps
     const largeGaps = breakdown.experienceGaps.filter(
-      (gap: any) => gap.gap > 12
+      (gap: { skillId: string; gap: number }) => gap.gap > 12
     );
     confidence -= largeGaps.length * 0.05;
 

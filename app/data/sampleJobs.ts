@@ -294,11 +294,11 @@ export function getAllJobs(): Job[] {
 }
 
 // Helper function to get jobs by category
-export function getJobsByCategory(category: string): Job[] {
-  return sampleJobs.filter((job) =>
-    job.requirements.some((req) => {
-      // This would need to be enhanced with actual skill categories
-      return true; // Placeholder
-    })
-  );
-}
+// export function getJobsByCategory(category: string): Job[] {
+//   return sampleJobs.filter((job) =>
+//     job.requirements.some((req) => {
+//       // This would need to be enhanced with actual skill categories
+//       return true; // Placeholder
+//     })
+//   );
+// }
