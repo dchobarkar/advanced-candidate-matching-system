@@ -12,6 +12,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import StatusIndicator from "./components/StatusIndicator";
 import MatchingProgress from "./components/MatchingProgress";
 import WelcomeGuide from "./components/WelcomeGuide";
+import Tooltip from "./components/Tooltip";
 
 export default function Page() {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -36,8 +37,19 @@ export default function Page() {
   ];
 
   const handleMatch = async () => {
-    if (!selectedJobId || !selectedCandidateId) {
-      setError("Please select both a job and a candidate");
+    // Enhanced validation
+    if (!selectedJobId && !selectedCandidateId) {
+      setError("Please select both a job and a candidate to perform matching");
+      return;
+    }
+
+    if (!selectedJobId) {
+      setError("Please select a job to match against");
+      return;
+    }
+
+    if (!selectedCandidateId) {
+      setError("Please select a candidate to match");
       return;
     }
 
@@ -69,17 +81,43 @@ export default function Page() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to perform matching");
+        // Handle specific API errors
+        if (data.code === "RESOURCE_NOT_FOUND") {
+          throw new Error(
+            `Matching failed: ${data.details || "Job or candidate not found"}`
+          );
+        } else if (data.code === "MISSING_REQUIRED_FIELDS") {
+          throw new Error(
+            "Matching failed: Missing required job or candidate information"
+          );
+        } else if (data.code === "INVALID_REQUEST") {
+          throw new Error(
+            `Matching failed: ${data.details || "Invalid request parameters"}`
+          );
+        } else {
+          throw new Error(
+            `Matching failed: ${data.details || data.error || "Unknown error"}`
+          );
+        }
       }
 
-      const data = await response.json();
+      if (!data.result) {
+        throw new Error("Matching failed: No result returned from server");
+      }
+
       setMatchingResult(data.result);
       setActiveTab("matching");
       clearInterval(progressInterval);
       setProgressStep(progressSteps.length - 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred during matching";
+      setError(errorMessage);
       clearInterval(progressInterval);
     } finally {
       setLoading(false);
@@ -120,12 +158,14 @@ export default function Page() {
             </div>
             <div className="flex items-center space-x-4">
               <StatusIndicator status={getStatus()} />
-              <button
-                onClick={() => setShowWelcome(true)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Help
-              </button>
+              <Tooltip content="Get help and learn how to use the system">
+                <button
+                  onClick={() => setShowWelcome(true)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Help
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -176,42 +216,56 @@ export default function Page() {
 
             {/* Action Buttons */}
             <div className="flex items-center justify-center space-x-4">
-              <button
-                onClick={handleMatch}
-                disabled={!selectedJobId || !selectedCandidateId || loading}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center space-x-2"
+              <Tooltip
+                content={
+                  !selectedJobId && !selectedCandidateId
+                    ? "Please select both a job and a candidate first"
+                    : !selectedJobId
+                    ? "Please select a job to match against"
+                    : !selectedCandidateId
+                    ? "Please select a candidate to match"
+                    : "Click to perform AI-powered matching analysis"
+                }
               >
-                {loading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>Perform Matching</span>
-                  </>
-                )}
-              </button>
+                <button
+                  onClick={handleMatch}
+                  disabled={!selectedJobId || !selectedCandidateId || loading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center space-x-2"
+                >
+                  {loading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>Perform Matching</span>
+                    </>
+                  )}
+                </button>
+              </Tooltip>
 
-              <button
-                onClick={resetForm}
-                className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-              >
-                Reset
-              </button>
+              <Tooltip content="Clear all selections and start over">
+                <button
+                  onClick={resetForm}
+                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Reset
+                </button>
+              </Tooltip>
             </div>
 
             {/* Progress Indicator */}
