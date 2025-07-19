@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import crypto from "crypto";
 
 import { AIContext } from "../types/matching";
 import { config } from "./config";
@@ -18,6 +19,7 @@ export class AIService {
   private lastRequestTime: number = 0;
   private readonly RATE_LIMIT_DELAY = 1000; // 1 second between requests
   private readonly MAX_RETRIES = 3;
+  private aiCache: Map<string, string> = new Map();
 
   constructor() {
     // Use configuration from config utility
@@ -42,6 +44,19 @@ export class AIService {
   }
 
   /**
+   * Generate a cache key based on the prompt and parameters
+   */
+  private getCacheKey(
+    prompt: string,
+    maxTokens: number,
+    temperature: number
+  ): string {
+    const hash = crypto.createHash("sha256");
+    hash.update(prompt + "|" + maxTokens + "|" + temperature);
+    return hash.digest("hex");
+  }
+
+  /**
    * Rate limiting utility
    */
   private async enforceRateLimit(): Promise<void> {
@@ -57,7 +72,7 @@ export class AIService {
   }
 
   /**
-   * Make OpenAI API call with retry logic and error handling
+   * Make OpenAI API call with retry logic, error handling, and caching
    */
   private async makeOpenAICall(
     prompt: string,
@@ -69,6 +84,14 @@ export class AIService {
         success: false,
         error: "OpenAI client not initialized",
         fallbackUsed: true,
+      };
+    }
+
+    const cacheKey = this.getCacheKey(prompt, maxTokens, temperature);
+    if (this.aiCache.has(cacheKey)) {
+      return {
+        success: true,
+        data: this.aiCache.get(cacheKey),
       };
     }
 
@@ -97,6 +120,9 @@ export class AIService {
         if (!content) {
           throw new Error("Empty response from OpenAI");
         }
+
+        // Cache the response
+        this.aiCache.set(cacheKey, content);
 
         return {
           success: true,
@@ -136,29 +162,31 @@ export class AIService {
       return this.getMockSkillContext(skillName, contextText);
     }
 
-    const prompt = `As an expert HR analyst specializing in technical skill assessment, analyze this experience with ${skillName}:
+    const prompt = `Analyze this technical experience with ${skillName}:
 
 EXPERIENCE: "${contextText}"
 
-Provide a detailed JSON analysis with:
-- skillContext: A concise description of the technical experience and impact
-- projectComplexity: A number 1-5 where 1=basic usage, 3=intermediate development, 5=architectural/leadership level
-- leadershipIndicators: Array of specific leadership indicators found (e.g., "Team lead", "Mentored developers", "Architecture decisions")
-- learningPotential: A number 0-1 indicating the candidate's learning potential based on complexity and growth indicators
+Provide a JSON response with exactly these fields:
+{
+  "skillContext": "Brief technical description of the experience",
+  "projectComplexity": number (1-5, where 1=basic, 3=intermediate, 5=architectural),
+  "leadershipIndicators": ["array", "of", "leadership", "indicators"],
+  "learningPotential": number (0-1, indicating learning ability)
+}
 
 Consider:
-- Technical depth and breadth
-- Project scale and impact
+- Technical depth and project scale
 - Leadership and mentoring indicators
 - Innovation and problem-solving complexity
+- Growth and learning indicators
 
-Respond only with valid JSON.`;
+Respond ONLY with valid JSON.`;
 
     const response = await this.makeOpenAICall(prompt, 400, 0.2);
 
     if (response.success && response.data) {
       try {
-        const parsed = JSON.parse(response.data);
+        const parsed = this.validateAndParseJSON(response.data, "skillContext");
         return {
           skillContext: parsed.skillContext || `Experience with ${skillName}`,
           projectComplexity: Math.min(
@@ -198,30 +226,34 @@ Respond only with valid JSON.`;
       return this.getMockLearningAssessment(missingSkill, candidateBackground);
     }
 
-    const prompt = `As an expert in technical skill development and learning assessment, evaluate the learning potential for ${missingSkill} based on this candidate's background:
+    const prompt = `Assess learning potential for ${missingSkill} based on this background:
 
-CANDIDATE BACKGROUND: "${candidateBackground}"
+BACKGROUND: "${candidateBackground}"
 TARGET SKILL: ${missingSkill}
 
-Provide a detailed JSON assessment with:
-- learnability: A number 0-1 indicating how easily they can learn this skill (consider transferable skills, learning patterns, background relevance)
-- timeToProficiency: Estimated months to reach professional proficiency (consider skill complexity, background strength, learning resources)
-- recommendations: Array of 3-4 specific, actionable learning recommendations tailored to their background
+Provide a JSON response with exactly these fields:
+{
+  "learnability": number (0-1, how easily they can learn this skill),
+  "timeToProficiency": number (estimated months to reach proficiency),
+  "recommendations": ["array", "of", "3-4", "specific", "recommendations"]
+}
 
 Consider:
 - Transferable skills from their background
-- Learning patterns and adaptability indicators
+- Learning patterns and adaptability
 - Skill complexity and prerequisites
-- Available learning resources and pathways
-- Industry demand and market relevance
+- Available learning resources
 
-Respond only with valid JSON.`;
+Respond ONLY with valid JSON.`;
 
     const response = await this.makeOpenAICall(prompt, 500, 0.3);
 
     if (response.success && response.data) {
       try {
-        const parsed = JSON.parse(response.data);
+        const parsed = this.validateAndParseJSON(
+          response.data,
+          "learningAssessment"
+        );
         return {
           learnability: Math.min(1, Math.max(0, parsed.learnability || 0.5)),
           timeToProficiency: Math.max(1, parsed.timeToProficiency || 6),
@@ -266,31 +298,34 @@ Respond only with valid JSON.`;
       );
     }
 
-    const prompt = `As an expert in technical experience validation, assess the credibility and complexity of this experience claim:
+    const prompt = `Validate this experience claim for ${skillName}:
 
-SKILL: ${skillName}
 DURATION: ${duration} months
 DESCRIPTION: "${experienceDescription}"
 
-Provide a detailed JSON assessment with:
-- isValid: Boolean indicating if the experience claim seems credible and realistic
-- confidence: A number 0-1 indicating confidence in the assessment (consider technical details, metrics, consistency)
-- complexityLevel: A number 1-5 indicating the technical complexity level (1=basic usage, 3=development, 5=architectural/advanced)
+Provide a JSON response with exactly these fields:
+{
+  "isValid": boolean (true if experience seems credible),
+  "confidence": number (0-1, confidence in assessment),
+  "complexityLevel": number (1-5, technical complexity level)
+}
 
 Consider:
 - Technical specificity and depth
 - Quantifiable metrics and impact
 - Consistency with duration and skill level
 - Industry standards and realistic expectations
-- Red flags or credibility indicators
 
-Respond only with valid JSON.`;
+Respond ONLY with valid JSON.`;
 
     const response = await this.makeOpenAICall(prompt, 350, 0.1);
 
     if (response.success && response.data) {
       try {
-        const parsed = JSON.parse(response.data);
+        const parsed = this.validateAndParseJSON(
+          response.data,
+          "experienceValidation"
+        );
         return {
           isValid: Boolean(parsed.isValid),
           confidence: Math.min(1, Math.max(0, parsed.confidence || 0.7)),
@@ -344,31 +379,31 @@ Respond only with valid JSON.`;
       };
     }
 
-    const prompt = `As an expert in technical skill gap analysis, evaluate these skill gaps for a candidate:
+    const prompt = `Analyze these skill gaps for a candidate:
 
-REQUIRED SKILLS: ${requiredSkills.join(", ")}
-CANDIDATE SKILLS: ${candidateSkills.join(", ")}
-MISSING SKILLS: ${gaps.join(", ")}
+REQUIRED: ${requiredSkills.join(", ")}
+CANDIDATE HAS: ${candidateSkills.join(", ")}
+MISSING: ${gaps.join(", ")}
 
-Provide a strategic JSON analysis with:
-- gaps: Array of missing skills prioritized by importance
-- recommendations: Array of 3-4 specific, actionable recommendations to address gaps (consider learning paths, certifications, projects)
-- priority: "high", "medium", or "low" based on gap severity and role requirements
+Provide a JSON response with exactly these fields:
+{
+  "gaps": ["array", "of", "missing", "skills"],
+  "recommendations": ["array", "of", "3-4", "specific", "recommendations"],
+  "priority": "high" or "medium" or "low"
+}
 
 Consider:
 - Skill interdependencies and learning prerequisites
 - Market demand and career impact
 - Learning efficiency and time investment
-- Alternative skills that could compensate
-- Industry trends and emerging technologies
 
-Respond only with valid JSON.`;
+Respond ONLY with valid JSON.`;
 
     const response = await this.makeOpenAICall(prompt, 450, 0.2);
 
     if (response.success && response.data) {
       try {
-        const parsed = JSON.parse(response.data);
+        const parsed = this.validateAndParseJSON(response.data, "gapAnalysis");
         return {
           gaps: Array.isArray(parsed.gaps) ? parsed.gaps : gaps,
           recommendations: Array.isArray(parsed.recommendations)
@@ -409,32 +444,35 @@ Respond only with valid JSON.`;
       );
     }
 
-    const prompt = `As an expert in skill transferability analysis, evaluate how well experience with ${sourceSkill} transfers to ${targetSkill}:
+    const prompt = `Analyze skill transferability from ${sourceSkill} to ${targetSkill}:
 
-CANDIDATE EXPERIENCE: "${candidateExperience}"
+EXPERIENCE: "${candidateExperience}"
 SOURCE SKILL: ${sourceSkill}
 TARGET SKILL: ${targetSkill}
 
-Provide a detailed JSON analysis with:
-- transferabilityScore: A number 0-1 indicating how well the skills transfer (consider conceptual overlap, technical similarities)
-- learningPath: Array of 3-4 specific steps to leverage existing knowledge for the target skill
-- timeToTransfer: Estimated months to achieve proficiency in target skill (consider existing foundation)
-- confidence: A number 0-1 indicating confidence in this assessment
+Provide a JSON response with exactly these fields:
+{
+  "transferabilityScore": number (0-1, how well skills transfer),
+  "learningPath": ["array", "of", "3-4", "specific", "steps"],
+  "timeToTransfer": number (estimated months to achieve proficiency),
+  "confidence": number (0-1, confidence in assessment)
+}
 
 Consider:
 - Conceptual similarities and differences
 - Technical overlap and prerequisites
 - Learning curve reduction from existing knowledge
-- Industry practices and common transitions
-- Specific technical concepts that transfer
 
-Respond only with valid JSON.`;
+Respond ONLY with valid JSON.`;
 
     const response = await this.makeOpenAICall(prompt, 400, 0.3);
 
     if (response.success && response.data) {
       try {
-        const parsed = JSON.parse(response.data);
+        const parsed = this.validateAndParseJSON(
+          response.data,
+          "skillTransferability"
+        );
         return {
           transferabilityScore: Math.min(
             1,
@@ -489,32 +527,32 @@ Respond only with valid JSON.`;
       );
     }
 
-    const prompt = `As an expert in cultural fit assessment, evaluate how well this candidate's experience aligns with the company culture:
+    const prompt = `Assess cultural fit for this candidate:
 
-CANDIDATE EXPERIENCE: "${candidateExperience}"
+EXPERIENCE: "${candidateExperience}"
 COMPANY CULTURE: "${companyCulture}"
 TEAM SIZE: ${teamSize}
 
-Provide a detailed JSON assessment with:
-- culturalFitScore: A number 0-1 indicating alignment with company values and culture
-- teamCollaborationScore: A number 0-1 indicating experience with team collaboration and communication
-- adaptabilityScore: A number 0-1 indicating ability to adapt to different environments
-- recommendations: Array of 2-3 specific recommendations for cultural integration
+Provide a JSON response with exactly these fields:
+{
+  "culturalFitScore": number (0-1, alignment with company values),
+  "teamCollaborationScore": number (0-1, team collaboration experience),
+  "adaptabilityScore": number (0-1, ability to adapt),
+  "recommendations": ["array", "of", "2-3", "specific", "recommendations"]
+}
 
 Consider:
 - Leadership and collaboration indicators
 - Communication and teamwork patterns
 - Adaptability and growth mindset
-- Cultural value alignment
-- Remote work and distributed team experience
 
-Respond only with valid JSON.`;
+Respond ONLY with valid JSON.`;
 
     const response = await this.makeOpenAICall(prompt, 400, 0.3);
 
     if (response.success && response.data) {
       try {
-        const parsed = JSON.parse(response.data);
+        const parsed = this.validateAndParseJSON(response.data, "culturalFit");
         return {
           culturalFitScore: Math.min(
             1,
@@ -861,6 +899,40 @@ Respond only with valid JSON.`;
       hasOpenAIKey: !!this.openaiApiKey,
       requestCount: this.requestCount,
     };
+  }
+
+  /**
+   * Validate and parse JSON responses with error handling
+   */
+  private validateAndParseJSON(
+    jsonString: string,
+    context: string
+  ): Record<string, unknown> {
+    try {
+      // Clean the response - remove any markdown formatting
+      let cleanedString = jsonString.trim();
+      if (cleanedString.startsWith("```json")) {
+        cleanedString = cleanedString
+          .replace(/```json\n?/, "")
+          .replace(/```\n?/, "");
+      }
+      if (cleanedString.startsWith("```")) {
+        cleanedString = cleanedString
+          .replace(/```\n?/, "")
+          .replace(/```\n?/, "");
+      }
+
+      const parsed = JSON.parse(cleanedString);
+
+      // Log successful parsing for debugging
+      console.log(`✅ Successfully parsed ${context} response`);
+
+      return parsed;
+    } catch (error) {
+      console.error(`❌ Failed to parse ${context} response:`, error);
+      console.error(`Raw response:`, jsonString);
+      throw new Error(`Invalid JSON response for ${context}: ${error.message}`);
+    }
   }
 }
 
