@@ -1,12 +1,16 @@
 "use client";
 
+import React, { memo } from "react";
+
 import { MatchingScore } from "../types/matching";
 
 interface ScoreBreakdownProps {
   score: MatchingScore;
 }
 
-export default function ScoreBreakdown({ score }: ScoreBreakdownProps) {
+const ScoreBreakdown = memo(function ScoreBreakdown({
+  score,
+}: ScoreBreakdownProps) {
   const getScoreColor = (score: number) => {
     if (score >= 0.8) return "text-green-600";
     if (score >= 0.6) return "text-yellow-600";
@@ -135,4 +139,6 @@ export default function ScoreBreakdown({ score }: ScoreBreakdownProps) {
       </div>
     </div>
   );
-}
+});
+
+export default ScoreBreakdown;

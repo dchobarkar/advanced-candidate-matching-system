@@ -170,9 +170,9 @@ export default function CandidateInput({
               <div className="mt-2 text-sm text-red-700">{error}</div>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-2 text-sm text-red-600 hover:text-red-500 font-medium"
+                className="mt-2 text-sm text-blue-600 hover:text-blue-500 font-medium"
               >
-                Try again
+                Retry
               </button>
             </div>
           </div>

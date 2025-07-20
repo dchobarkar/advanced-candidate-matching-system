@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { memo, useState } from "react";
 
 import { MatchingResult } from "../types/matching";
 
@@ -10,7 +10,7 @@ interface MatchingResultsProps {
   error: string | null;
 }
 
-export default function MatchingResults({
+const MatchingResults = memo(function MatchingResults({
   result,
   loading,
   error,
@@ -338,4 +338,6 @@ export default function MatchingResults({
       )}
     </div>
   );
-}
+});
+
+export default MatchingResults;
