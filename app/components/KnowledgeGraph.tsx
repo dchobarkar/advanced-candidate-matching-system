@@ -1,5 +1,6 @@
 "use client";
 
+import React, { memo } from "react";
 import { useState, useEffect } from "react";
 
 import { Skill, SkillRelationship } from "../types/matching";
@@ -10,7 +11,7 @@ interface KnowledgeGraphProps {
   onSkillSelect?: (skillId: string) => void;
 }
 
-export default function KnowledgeGraph({
+const KnowledgeGraph = memo(function KnowledgeGraph({
   selectedSkills = [],
   onSkillSelect,
 }: KnowledgeGraphProps) {
@@ -250,4 +251,6 @@ export default function KnowledgeGraph({
       </div>
     </div>
   );
-}
+});
+
+export default KnowledgeGraph;
