@@ -1,5 +1,6 @@
 import { scoringEngine } from "./scoringEngine";
 import { skillNormalizer } from "./skillNormalizer";
+import { aiService } from "./aiService";
 import { findJobById, getAllJobs } from "../data/sampleJobs";
 import { findCandidateById, getAllCandidates } from "../data/sampleCandidates";
 import {
@@ -12,7 +13,7 @@ import {
 
 export class MatchingService {
   /**
-   * Main matching function that processes a matching request
+   * Main matching function that processes a matching request with enhanced AI analysis
    */
   public async match(request: MatchingRequest): Promise<MatchingResponse> {
     const startTime = Date.now();
@@ -33,14 +34,23 @@ export class MatchingService {
       // Calculate matching score
       const score = scoringEngine.calculateMatchingScore(candidate, job);
 
-      // Generate explanation
-      const explanation = this.generateExplanation(candidate, job, score);
+      // Enhanced AI analysis
+      const aiAnalysis = await this.performEnhancedAIAnalysis(candidate, job);
 
-      // Generate recommendations
-      const recommendations = this.generateRecommendations(
+      // Generate explanation with AI insights
+      const explanation = this.generateEnhancedExplanation(
         candidate,
         job,
-        score
+        score,
+        aiAnalysis
+      );
+
+      // Generate recommendations with AI insights
+      const recommendations = this.generateEnhancedRecommendations(
+        candidate,
+        job,
+        score,
+        aiAnalysis
       );
 
       const result: MatchingResult = {
@@ -52,7 +62,7 @@ export class MatchingService {
       };
 
       const processingTime = Date.now() - startTime;
-      const confidence = this.calculateConfidence(score);
+      const confidence = this.calculateEnhancedConfidence(score, aiAnalysis);
 
       return {
         result,
@@ -323,6 +333,263 @@ export class MatchingService {
     }
 
     return Math.max(0.3, Math.min(1.0, confidence));
+  }
+
+  /**
+   * Perform enhanced AI analysis for candidate-job matching
+   */
+  private async performEnhancedAIAnalysis(candidate: Candidate, job: Job) {
+    interface AIAnalysis {
+      skillTransferability: Array<{
+        sourceSkill: string;
+        targetSkill: string;
+        transferabilityScore: number;
+        learningPath: string[];
+        timeToTransfer: number;
+        confidence: number;
+      }>;
+      culturalFit: {
+        culturalFitScore: number;
+        teamCollaborationScore: number;
+        adaptabilityScore: number;
+        recommendations: string[];
+      } | null;
+      learningPotential: Array<{
+        skill: string;
+        learnability: number;
+        timeToProficiency: number;
+        recommendations: string[];
+      }>;
+      experienceValidation: Array<{
+        skill: string;
+        isValid: boolean;
+        confidence: number;
+        complexityLevel: number;
+      }>;
+    }
+
+    const analysis: AIAnalysis = {
+      skillTransferability: [],
+      culturalFit: null,
+      learningPotential: [],
+      experienceValidation: [],
+    };
+
+    try {
+      // Analyze skill transferability for missing skills
+      const missingSkills = job.requirements.filter(
+        (req) => !candidate.skills.includes(req.skillId)
+      );
+
+      for (const missingSkill of missingSkills.slice(0, 3)) {
+        // Limit to top 3 for performance
+        const relatedSkills = candidate.skills.filter((skillId) =>
+          skillNormalizer.areSkillsRelated(skillId, missingSkill.skillId)
+        );
+
+        if (relatedSkills.length > 0) {
+          const sourceSkill = relatedSkills[0];
+          const candidateExp = candidate.experience.find(
+            (exp) => exp.skillId === sourceSkill
+          );
+
+          if (candidateExp) {
+            const transferability = await aiService.analyzeSkillTransferability(
+              sourceSkill,
+              missingSkill.skillId,
+              candidateExp.projectDescription || `${sourceSkill} experience`
+            );
+            analysis.skillTransferability.push({
+              sourceSkill,
+              targetSkill: missingSkill.skillId,
+              ...transferability,
+            });
+          }
+        }
+      }
+
+      // Assess cultural fit
+      const candidateSummary = candidate.summary;
+      const companyCulture = job.company; // Simplified - could be enhanced with actual company culture data
+      const teamSize = "25"; // Simplified - could be enhanced with actual team size data
+
+      analysis.culturalFit = await aiService.assessCulturalFit(
+        candidateSummary,
+        companyCulture,
+        teamSize
+      );
+
+      // Assess learning potential for missing skills
+      for (const missingSkill of missingSkills.slice(0, 2)) {
+        // Limit to top 2 for performance
+        const learningAssessment = await aiService.assessLearningPotential(
+          missingSkill.skillId,
+          candidateSummary
+        );
+        analysis.learningPotential.push({
+          skill: missingSkill.skillId,
+          ...learningAssessment,
+        });
+      }
+
+      // Validate experience claims
+      for (const experience of candidate.experience.slice(0, 3)) {
+        // Limit to top 3 for performance
+        const validation = await aiService.validateExperience(
+          experience.skillId,
+          experience.projectDescription || `${experience.skillId} experience`,
+          experience.duration
+        );
+        analysis.experienceValidation.push({
+          skill: experience.skillId,
+          ...validation,
+        });
+      }
+    } catch (error) {
+      console.error("Enhanced AI analysis failed:", error);
+      // Continue with basic analysis if AI fails
+    }
+
+    return analysis;
+  }
+
+  /**
+   * Generate enhanced explanation with AI insights
+   */
+  private generateEnhancedExplanation(
+    candidate: Candidate,
+    job: Job,
+    score: import("../types/matching").MatchingScore,
+    aiAnalysis: {
+      skillTransferability: Array<{
+        sourceSkill: string;
+        targetSkill: string;
+        transferabilityScore: number;
+      }>;
+      culturalFit: {
+        culturalFitScore: number;
+      } | null;
+      learningPotential: Array<{
+        timeToProficiency: number;
+      }>;
+    }
+  ): string {
+    let explanation = this.generateExplanation(candidate, job, score);
+
+    // Add AI insights if available
+    if (aiAnalysis.skillTransferability.length > 0) {
+      const bestTransfer = aiAnalysis.skillTransferability.reduce(
+        (best, current) =>
+          current.transferabilityScore > best.transferabilityScore
+            ? current
+            : best
+      );
+      explanation += ` AI analysis shows strong transferability (${Math.round(
+        bestTransfer.transferabilityScore * 100
+      )}%) from ${bestTransfer.sourceSkill} to ${bestTransfer.targetSkill}.`;
+    }
+
+    if (aiAnalysis.culturalFit) {
+      const culturalScore = Math.round(
+        aiAnalysis.culturalFit.culturalFitScore * 100
+      );
+      explanation += ` Cultural fit assessment indicates ${culturalScore}% alignment with company values.`;
+    }
+
+    if (aiAnalysis.learningPotential.length > 0) {
+      const avgLearningTime =
+        aiAnalysis.learningPotential.reduce(
+          (sum, item) => sum + item.timeToProficiency,
+          0
+        ) / aiAnalysis.learningPotential.length;
+      explanation += ` Estimated learning time for missing skills: ${Math.round(
+        avgLearningTime
+      )} months.`;
+    }
+
+    return explanation;
+  }
+
+  /**
+   * Generate enhanced recommendations with AI insights
+   */
+  private generateEnhancedRecommendations(
+    candidate: Candidate,
+    job: Job,
+    score: import("../types/matching").MatchingScore,
+    aiAnalysis: any
+  ): string[] {
+    const recommendations = this.generateRecommendations(candidate, job, score);
+
+    // Add AI-powered recommendations
+    if (aiAnalysis.skillTransferability.length > 0) {
+      const bestTransfer = aiAnalysis.skillTransferability.reduce(
+        (best: any, current: any) =>
+          current.transferabilityScore > best.transferabilityScore
+            ? current
+            : best
+      );
+      recommendations.push(
+        `Leverage ${bestTransfer.sourceSkill} experience to accelerate learning of ${bestTransfer.targetSkill}`
+      );
+    }
+
+    if (aiAnalysis.learningPotential.length > 0) {
+      const fastestLearning = aiAnalysis.learningPotential.reduce(
+        (fastest: any, current: any) =>
+          current.timeToProficiency < fastest.timeToProficiency
+            ? current
+            : fastest
+      );
+      recommendations.push(
+        `Focus on ${fastestLearning.skill} first (${Math.round(
+          fastestLearning.timeToProficiency
+        )} months to proficiency)`
+      );
+    }
+
+    if (aiAnalysis.culturalFit && aiAnalysis.culturalFit.recommendations) {
+      recommendations.push(
+        ...aiAnalysis.culturalFit.recommendations.slice(0, 2)
+      );
+    }
+
+    return recommendations.slice(0, 5); // Limit to top 5 recommendations
+  }
+
+  /**
+   * Calculate enhanced confidence with AI analysis
+   */
+  private calculateEnhancedConfidence(
+    score: import("../types/matching").MatchingScore,
+    aiAnalysis: any
+  ): number {
+    let confidence = this.calculateConfidence(score);
+
+    // Adjust confidence based on AI analysis
+    if (aiAnalysis.skillTransferability.length > 0) {
+      const avgTransferability =
+        aiAnalysis.skillTransferability.reduce(
+          (sum: number, item: any) => sum + item.transferabilityScore,
+          0
+        ) / aiAnalysis.skillTransferability.length;
+      confidence += avgTransferability * 0.1; // Boost confidence for good transferability
+    }
+
+    if (aiAnalysis.culturalFit) {
+      confidence += aiAnalysis.culturalFit.culturalFitScore * 0.05; // Small boost for cultural fit
+    }
+
+    if (aiAnalysis.experienceValidation.length > 0) {
+      const avgValidationConfidence =
+        aiAnalysis.experienceValidation.reduce(
+          (sum: number, item: any) => sum + item.confidence,
+          0
+        ) / aiAnalysis.experienceValidation.length;
+      confidence += avgValidationConfidence * 0.05; // Small boost for validated experience
+    }
+
+    return Math.min(1.0, Math.max(0.3, confidence));
   }
 
   /**

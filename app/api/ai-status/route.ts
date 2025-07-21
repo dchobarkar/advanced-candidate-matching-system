@@ -34,7 +34,16 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, skillName, contextText } = body;
+    const {
+      action,
+      skillName,
+      contextText,
+      sourceSkill,
+      targetSkill,
+      candidateExperience,
+      companyCulture,
+      teamSize,
+    } = body;
 
     if (action === "test-skill-context" && skillName && contextText) {
       const result = await aiService.analyzeSkillContext(
@@ -68,12 +77,56 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (
+      action === "test-skill-transferability" &&
+      sourceSkill &&
+      targetSkill &&
+      candidateExperience
+    ) {
+      const result = await aiService.analyzeSkillTransferability(
+        sourceSkill,
+        targetSkill,
+        candidateExperience
+      );
+
+      return NextResponse.json({
+        status: "success",
+        data: {
+          action: "test-skill-transferability",
+          result,
+          serviceStatus: aiService.getStatus(),
+        },
+      });
+    }
+
+    if (
+      action === "test-cultural-fit" &&
+      candidateExperience &&
+      companyCulture &&
+      teamSize
+    ) {
+      const result = await aiService.assessCulturalFit(
+        candidateExperience,
+        companyCulture,
+        teamSize
+      );
+
+      return NextResponse.json({
+        status: "success",
+        data: {
+          action: "test-cultural-fit",
+          result,
+          serviceStatus: aiService.getStatus(),
+        },
+      });
+    }
+
     return NextResponse.json(
       {
         status: "error",
         error: "Invalid action or missing parameters",
         details:
-          "Supported actions: test-skill-context, test-learning-assessment",
+          "Supported actions: test-skill-context, test-learning-assessment, test-skill-transferability, test-cultural-fit",
       },
       { status: 400 }
     );
