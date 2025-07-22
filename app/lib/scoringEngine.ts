@@ -9,6 +9,29 @@ import {
 } from "../types/matching";
 import { skillNormalizer } from "./skillNormalizer";
 
+/**
+ * Multi-factor scoring engine for candidate-job matching.
+ *
+ * This engine implements a sophisticated scoring algorithm that goes beyond
+ * simple skill matching to consider multiple factors that contribute to
+ * job-candidate fit:
+ *
+ * Scoring Weights:
+ * - Skill Match (40%): Direct and related skill matches
+ * - Experience (25%): Depth and relevance of experience
+ * - Transferable Skills (20%): Skills that can transfer to required skills
+ * - Potential (15%): Learning ability, growth trajectory, education
+ *
+ * The scoring system provides explainable results with detailed breakdowns
+ * showing matched skills, missing skills, experience gaps, and potential indicators.
+ *
+ * @example
+ * ```typescript
+ * const score = scoringEngine.calculateMatchingScore(candidate, job);
+ * console.log(`Overall Score: ${score.overallScore}%`);
+ * console.log(`Skill Match: ${score.skillMatchScore}%`);
+ * ```
+ */
 export class ScoringEngine {
   private readonly SKILL_MATCH_WEIGHT = 0.4;
   private readonly EXPERIENCE_WEIGHT = 0.3;
@@ -16,7 +39,22 @@ export class ScoringEngine {
   private readonly POTENTIAL_WEIGHT = 0.1;
 
   /**
-   * Calculate overall matching score between candidate and job
+   * Calculate the overall matching score between a candidate and job.
+   *
+   * This is the main scoring function that combines multiple factors:
+   * 1. Skill match score (40% weight) - direct and related skill matches
+   * 2. Experience score (25% weight) - depth and relevance of experience
+   * 3. Transferable skills score (20% weight) - skills that can transfer
+   * 4. Potential score (15% weight) - learning ability and growth trajectory
+   *
+   * The function returns a comprehensive score object with:
+   * - Overall score (weighted average of all factors)
+   * - Individual factor scores for transparency
+   * - Detailed breakdown for explainability
+   *
+   * @param candidate - The candidate to evaluate
+   * @param job - The job to match against
+   * @returns MatchingScore - Complete scoring result with breakdown
    */
   public calculateMatchingScore(candidate: Candidate, job: Job): MatchingScore {
     const skillMatchScore = this.calculateSkillMatchScore(

@@ -11,6 +11,34 @@ interface AIResponse {
   fallbackUsed?: boolean;
 }
 
+/**
+ * Centralized AI service for intelligent candidate-job matching analysis.
+ *
+ * This service provides AI-powered analysis capabilities for the matching system,
+ * including skill context analysis, learning potential assessment, experience
+ * validation, and cultural fit evaluation.
+ *
+ * Key Features:
+ * - OpenAI GPT-3.5-turbo integration with fallback to mock data
+ * - Rate limiting (1-second delay between requests)
+ * - Retry logic with exponential backoff
+ * - In-memory caching for performance
+ * - Comprehensive error handling
+ * - Mock mode for development and testing
+ *
+ * AI Analysis Capabilities:
+ * - Skill Context Analysis: Understand skill usage in experience descriptions
+ * - Learning Potential Assessment: Evaluate ability to learn missing skills
+ * - Experience Validation: Assess credibility and complexity of experience claims
+ * - Skill Transferability Analysis: Determine how well skills transfer to others
+ * - Cultural Fit Assessment: Evaluate alignment with company culture
+ *
+ * @example
+ * ```typescript
+ * const aiService = new AIService();
+ * const analysis = await aiService.analyzeSkillContext("React", "Built React apps...");
+ * ```
+ */
 export class AIService {
   private isMockMode: boolean = true;
   private openaiApiKey: string | undefined;

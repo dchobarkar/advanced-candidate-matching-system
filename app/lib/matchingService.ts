@@ -11,9 +11,42 @@ import {
   MatchingResponse,
 } from "../types/matching";
 
+/**
+ * Core matching service that orchestrates the candidate-job matching process.
+ *
+ * This service combines traditional scoring algorithms with AI-powered analysis
+ * to provide comprehensive matching results that go beyond simple skill comparison.
+ *
+ * Key Features:
+ * - Multi-factor scoring (skills, experience, transferability, potential)
+ * - AI-enhanced analysis (skill transferability, cultural fit, learning potential)
+ * - Explainable results with detailed breakdowns
+ * - Confidence scoring with AI validation
+ * - Comprehensive recommendations
+ *
+ * @example
+ * ```typescript
+ * const result = await matchingService.match({
+ *   jobId: "job-1",
+ *   candidateId: "candidate-1"
+ * });
+ * ```
+ */
 export class MatchingService {
   /**
-   * Main matching function that processes a matching request with enhanced AI analysis
+   * Main matching function that processes a matching request with enhanced AI analysis.
+   *
+   * This is the primary entry point for candidate-job matching. It performs:
+   * 1. Data validation and retrieval
+   * 2. Multi-factor scoring calculation
+   * 3. AI-enhanced analysis (skill transferability, cultural fit, learning potential)
+   * 4. Explanation generation with AI insights
+   * 5. Recommendation generation with AI insights
+   * 6. Confidence calculation with AI validation
+   *
+   * @param request - The matching request containing jobId and candidateId
+   * @returns Promise<MatchingResponse> - Complete matching result with AI insights
+   * @throws Error - If job or candidate not found, or if matching fails
    */
   public async match(request: MatchingRequest): Promise<MatchingResponse> {
     const startTime = Date.now();
@@ -79,7 +112,17 @@ export class MatchingService {
   }
 
   /**
-   * Match a candidate against all available jobs
+   * Match a candidate against all available jobs to find the best opportunities.
+   *
+   * This method evaluates a candidate against all available jobs and returns
+   * results sorted by overall match score (descending). Useful for:
+   * - Job recommendations for candidates
+   * - Understanding a candidate's market position
+   * - Identifying skill gaps across different job types
+   *
+   * @param candidateId - The ID of the candidate to match
+   * @returns Promise<MatchingResult[]> - Array of matching results sorted by score
+   * @throws Error - If candidate not found
    */
   public async matchCandidateAgainstAllJobs(
     candidateId: string
@@ -115,7 +158,18 @@ export class MatchingService {
   }
 
   /**
-   * Find candidates for a specific job
+   * Find the best candidates for a specific job.
+   *
+   * This method evaluates all candidates against a specific job and returns
+   * the top candidates sorted by overall match score (descending). Useful for:
+   * - Recruiting for a specific position
+   * - Understanding the candidate pool for a job
+   * - Identifying the most qualified candidates
+   *
+   * @param jobId - The ID of the job to find candidates for
+   * @param limit - Maximum number of candidates to return (default: 10)
+   * @returns Promise<MatchingResult[]> - Array of matching results sorted by score
+   * @throws Error - If job not found
    */
   public async findCandidatesForJob(
     jobId: string,
