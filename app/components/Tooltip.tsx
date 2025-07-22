@@ -9,12 +9,12 @@ interface TooltipProps {
   className?: string;
 }
 
-export default function Tooltip({
+const Tooltip = ({
   content,
   children,
   position = "top",
   className = "",
-}: TooltipProps) {
+}: TooltipProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
   const getPositionClasses = () => {
@@ -61,4 +61,6 @@ export default function Tooltip({
       )}
     </div>
   );
-}
+};
+
+export default Tooltip;

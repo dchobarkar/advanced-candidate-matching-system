@@ -4,11 +4,11 @@ interface MatchingProgressProps {
   stepLabels: string[];
 }
 
-export default function MatchingProgress({
+const MatchingProgress = ({
   currentStep,
   totalSteps,
   stepLabels,
-}: MatchingProgressProps) {
+}: MatchingProgressProps) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -76,4 +76,6 @@ export default function MatchingProgress({
       </div>
     </div>
   );
-}
+};
+
+export default MatchingProgress;

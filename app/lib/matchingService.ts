@@ -9,7 +9,54 @@ import {
   MatchingResult,
   MatchingRequest,
   MatchingResponse,
+  MatchingScore,
 } from "../types/matching";
+
+// Type definitions for better type safety
+interface SkillTransferability {
+  sourceSkill: string;
+  targetSkill: string;
+  transferabilityScore: number;
+  learningPath: string[];
+  timeToTransfer: number;
+  confidence: number;
+}
+
+interface CulturalFitAssessment {
+  culturalFitScore: number;
+  teamCollaborationScore: number;
+  adaptabilityScore: number;
+  recommendations: string[];
+}
+
+interface LearningPotentialAssessment {
+  skill: string;
+  learnability: number;
+  timeToProficiency: number;
+  recommendations: string[];
+}
+
+interface ExperienceValidation {
+  skill: string;
+  isValid: boolean;
+  confidence: number;
+  complexityLevel: number;
+}
+
+interface AIAnalysis {
+  skillTransferability: SkillTransferability[];
+  culturalFit: CulturalFitAssessment | null;
+  learningPotential: LearningPotentialAssessment[];
+  experienceValidation: ExperienceValidation[];
+}
+
+interface MatchingServiceConfig {
+  maxAnalysisSkills: number;
+  maxAnalysisExperiences: number;
+  confidenceBoostFactor: number;
+  culturalFitWeight: number;
+  transferabilityWeight: number;
+}
 
 /**
  * Core matching service that orchestrates the candidate-job matching process.
@@ -26,29 +73,33 @@ import {
  *
  * @example
  * ```typescript
+ * const matchingService = createMatchingService();
  * const result = await matchingService.match({
  *   jobId: "job-1",
  *   candidateId: "candidate-1"
  * });
  * ```
  */
-export class MatchingService {
-  /**
-   * Main matching function that processes a matching request with enhanced AI analysis.
-   *
-   * This is the primary entry point for candidate-job matching. It performs:
-   * 1. Data validation and retrieval
-   * 2. Multi-factor scoring calculation
-   * 3. AI-enhanced analysis (skill transferability, cultural fit, learning potential)
-   * 4. Explanation generation with AI insights
-   * 5. Recommendation generation with AI insights
-   * 6. Confidence calculation with AI validation
-   *
-   * @param request - The matching request containing jobId and candidateId
-   * @returns Promise<MatchingResponse> - Complete matching result with AI insights
-   * @throws Error - If job or candidate not found, or if matching fails
-   */
-  public async match(request: MatchingRequest): Promise<MatchingResponse> {
+
+// Create matching service with configuration
+export function createMatchingService(): ReturnType<
+  typeof createMatchingServiceInstance
+> {
+  return createMatchingServiceInstance();
+}
+
+function createMatchingServiceInstance() {
+  // Configuration
+  const config: MatchingServiceConfig = {
+    maxAnalysisSkills: 3,
+    maxAnalysisExperiences: 3,
+    confidenceBoostFactor: 0.1,
+    culturalFitWeight: 0.05,
+    transferabilityWeight: 0.1,
+  };
+
+  // Main matching function that processes a matching request with enhanced AI analysis
+  async function match(request: MatchingRequest): Promise<MatchingResponse> {
     const startTime = Date.now();
 
     try {
@@ -68,10 +119,10 @@ export class MatchingService {
       const score = scoringEngine.calculateMatchingScore(candidate, job);
 
       // Enhanced AI analysis
-      const aiAnalysis = await this.performEnhancedAIAnalysis(candidate, job);
+      const aiAnalysis = await performEnhancedAIAnalysis(candidate, job);
 
       // Generate explanation with AI insights
-      const explanation = this.generateEnhancedExplanation(
+      const explanation = generateEnhancedExplanation(
         candidate,
         job,
         score,
@@ -79,7 +130,7 @@ export class MatchingService {
       );
 
       // Generate recommendations with AI insights
-      const recommendations = this.generateEnhancedRecommendations(
+      const recommendations = generateEnhancedRecommendations(
         candidate,
         job,
         score,
@@ -95,7 +146,7 @@ export class MatchingService {
       };
 
       const processingTime = Date.now() - startTime;
-      const confidence = this.calculateEnhancedConfidence(score, aiAnalysis);
+      const confidence = calculateEnhancedConfidence(score, aiAnalysis);
 
       return {
         result,
@@ -111,20 +162,8 @@ export class MatchingService {
     }
   }
 
-  /**
-   * Match a candidate against all available jobs to find the best opportunities.
-   *
-   * This method evaluates a candidate against all available jobs and returns
-   * results sorted by overall match score (descending). Useful for:
-   * - Job recommendations for candidates
-   * - Understanding a candidate's market position
-   * - Identifying skill gaps across different job types
-   *
-   * @param candidateId - The ID of the candidate to match
-   * @returns Promise<MatchingResult[]> - Array of matching results sorted by score
-   * @throws Error - If candidate not found
-   */
-  public async matchCandidateAgainstAllJobs(
+  // Match a candidate against all available jobs to find the best opportunities
+  async function matchCandidateAgainstAllJobs(
     candidateId: string
   ): Promise<MatchingResult[]> {
     const candidate = findCandidateById(candidateId);
@@ -137,12 +176,8 @@ export class MatchingService {
 
     for (const job of jobs) {
       const score = scoringEngine.calculateMatchingScore(candidate, job);
-      const explanation = this.generateExplanation(candidate, job, score);
-      const recommendations = this.generateRecommendations(
-        candidate,
-        job,
-        score
-      );
+      const explanation = generateExplanation(candidate, job, score);
+      const recommendations = generateRecommendations(candidate, job, score);
 
       results.push({
         candidate,
@@ -157,21 +192,8 @@ export class MatchingService {
     return results.sort((a, b) => b.score.overallScore - a.score.overallScore);
   }
 
-  /**
-   * Find the best candidates for a specific job.
-   *
-   * This method evaluates all candidates against a specific job and returns
-   * the top candidates sorted by overall match score (descending). Useful for:
-   * - Recruiting for a specific position
-   * - Understanding the candidate pool for a job
-   * - Identifying the most qualified candidates
-   *
-   * @param jobId - The ID of the job to find candidates for
-   * @param limit - Maximum number of candidates to return (default: 10)
-   * @returns Promise<MatchingResult[]> - Array of matching results sorted by score
-   * @throws Error - If job not found
-   */
-  public async findCandidatesForJob(
+  // Find the best candidates for a specific job
+  async function findCandidatesForJob(
     jobId: string,
     limit: number = 10
   ): Promise<MatchingResult[]> {
@@ -185,12 +207,8 @@ export class MatchingService {
 
     for (const candidate of candidates) {
       const score = scoringEngine.calculateMatchingScore(candidate, job);
-      const explanation = this.generateExplanation(candidate, job, score);
-      const recommendations = this.generateRecommendations(
-        candidate,
-        job,
-        score
-      );
+      const explanation = generateExplanation(candidate, job, score);
+      const recommendations = generateRecommendations(candidate, job, score);
 
       results.push({
         candidate,
@@ -207,13 +225,11 @@ export class MatchingService {
       .slice(0, limit);
   }
 
-  /**
-   * Generate explanation for the matching result
-   */
-  private generateExplanation(
+  // Generate explanation for the matching result
+  function generateExplanation(
     candidate: Candidate,
     job: Job,
-    score: import("../types/matching").MatchingScore
+    score: MatchingScore
   ): string {
     const { breakdown } = score;
 
@@ -265,7 +281,7 @@ export class MatchingService {
       }
     }
 
-    // Potential indicators
+    // Potential explanation
     if (breakdown.potentialIndicators.length > 0) {
       explanation += `They show strong potential indicators including ${breakdown.potentialIndicators.join(
         ", "
@@ -274,7 +290,7 @@ export class MatchingService {
 
     // Risk factors
     if (breakdown.riskFactors.length > 0) {
-      explanation += `Considerations include ${breakdown.riskFactors.join(
+      explanation += `Consider addressing these risk factors: ${breakdown.riskFactors.join(
         ", "
       )}. `;
     }
@@ -282,13 +298,11 @@ export class MatchingService {
     return explanation;
   }
 
-  /**
-   * Generate recommendations for the candidate
-   */
-  private generateRecommendations(
+  // Generate recommendations for the candidate
+  function generateRecommendations(
     candidate: Candidate,
     job: Job,
-    score: import("../types/matching").MatchingScore
+    score: MatchingScore
   ): string[] {
     const { breakdown } = score;
     const recommendations: string[] = [];
@@ -352,12 +366,8 @@ export class MatchingService {
     return recommendations;
   }
 
-  /**
-   * Calculate confidence level based on score breakdown
-   */
-  private calculateConfidence(
-    score: import("../types/matching").MatchingScore
-  ): number {
+  // Calculate confidence level based on score breakdown
+  function calculateConfidence(score: MatchingScore): number {
     const { breakdown } = score;
 
     let confidence = 0.8; // Base confidence
@@ -389,39 +399,11 @@ export class MatchingService {
     return Math.max(0.3, Math.min(1.0, confidence));
   }
 
-  /**
-   * Perform enhanced AI analysis for candidate-job matching
-   */
-  private async performEnhancedAIAnalysis(candidate: Candidate, job: Job) {
-    interface AIAnalysis {
-      skillTransferability: Array<{
-        sourceSkill: string;
-        targetSkill: string;
-        transferabilityScore: number;
-        learningPath: string[];
-        timeToTransfer: number;
-        confidence: number;
-      }>;
-      culturalFit: {
-        culturalFitScore: number;
-        teamCollaborationScore: number;
-        adaptabilityScore: number;
-        recommendations: string[];
-      } | null;
-      learningPotential: Array<{
-        skill: string;
-        learnability: number;
-        timeToProficiency: number;
-        recommendations: string[];
-      }>;
-      experienceValidation: Array<{
-        skill: string;
-        isValid: boolean;
-        confidence: number;
-        complexityLevel: number;
-      }>;
-    }
-
+  // Perform enhanced AI analysis for candidate-job matching
+  async function performEnhancedAIAnalysis(
+    candidate: Candidate,
+    job: Job
+  ): Promise<AIAnalysis> {
     const analysis: AIAnalysis = {
       skillTransferability: [],
       culturalFit: null,
@@ -435,8 +417,10 @@ export class MatchingService {
         (req) => !candidate.skills.includes(req.skillId)
       );
 
-      for (const missingSkill of missingSkills.slice(0, 3)) {
-        // Limit to top 3 for performance
+      for (const missingSkill of missingSkills.slice(
+        0,
+        config.maxAnalysisSkills
+      )) {
         const relatedSkills = candidate.skills.filter((skillId) =>
           skillNormalizer.areSkillsRelated(skillId, missingSkill.skillId)
         );
@@ -475,7 +459,6 @@ export class MatchingService {
 
       // Assess learning potential for missing skills
       for (const missingSkill of missingSkills.slice(0, 2)) {
-        // Limit to top 2 for performance
         const learningAssessment = await aiService.assessLearningPotential(
           missingSkill.skillId,
           candidateSummary
@@ -487,8 +470,10 @@ export class MatchingService {
       }
 
       // Validate experience claims
-      for (const experience of candidate.experience.slice(0, 3)) {
-        // Limit to top 3 for performance
+      for (const experience of candidate.experience.slice(
+        0,
+        config.maxAnalysisExperiences
+      )) {
         const validation = await aiService.validateExperience(
           experience.skillId,
           experience.projectDescription || `${experience.skillId} experience`,
@@ -507,28 +492,14 @@ export class MatchingService {
     return analysis;
   }
 
-  /**
-   * Generate enhanced explanation with AI insights
-   */
-  private generateEnhancedExplanation(
+  // Generate enhanced explanation with AI insights
+  function generateEnhancedExplanation(
     candidate: Candidate,
     job: Job,
-    score: import("../types/matching").MatchingScore,
-    aiAnalysis: {
-      skillTransferability: Array<{
-        sourceSkill: string;
-        targetSkill: string;
-        transferabilityScore: number;
-      }>;
-      culturalFit: {
-        culturalFitScore: number;
-      } | null;
-      learningPotential: Array<{
-        timeToProficiency: number;
-      }>;
-    }
+    score: MatchingScore,
+    aiAnalysis: AIAnalysis
   ): string {
-    let explanation = this.generateExplanation(candidate, job, score);
+    let explanation = generateExplanation(candidate, job, score);
 
     // Add AI insights if available
     if (aiAnalysis.skillTransferability.length > 0) {
@@ -564,21 +535,19 @@ export class MatchingService {
     return explanation;
   }
 
-  /**
-   * Generate enhanced recommendations with AI insights
-   */
-  private generateEnhancedRecommendations(
+  // Generate enhanced recommendations with AI insights
+  function generateEnhancedRecommendations(
     candidate: Candidate,
     job: Job,
-    score: import("../types/matching").MatchingScore,
-    aiAnalysis: any
+    score: MatchingScore,
+    aiAnalysis: AIAnalysis
   ): string[] {
-    const recommendations = this.generateRecommendations(candidate, job, score);
+    const recommendations = generateRecommendations(candidate, job, score);
 
     // Add AI-powered recommendations
     if (aiAnalysis.skillTransferability.length > 0) {
       const bestTransfer = aiAnalysis.skillTransferability.reduce(
-        (best: any, current: any) =>
+        (best, current) =>
           current.transferabilityScore > best.transferabilityScore
             ? current
             : best
@@ -590,7 +559,7 @@ export class MatchingService {
 
     if (aiAnalysis.learningPotential.length > 0) {
       const fastestLearning = aiAnalysis.learningPotential.reduce(
-        (fastest: any, current: any) =>
+        (fastest, current) =>
           current.timeToProficiency < fastest.timeToProficiency
             ? current
             : fastest
@@ -611,45 +580,42 @@ export class MatchingService {
     return recommendations.slice(0, 5); // Limit to top 5 recommendations
   }
 
-  /**
-   * Calculate enhanced confidence with AI analysis
-   */
-  private calculateEnhancedConfidence(
-    score: import("../types/matching").MatchingScore,
-    aiAnalysis: any
+  // Calculate enhanced confidence with AI analysis
+  function calculateEnhancedConfidence(
+    score: MatchingScore,
+    aiAnalysis: AIAnalysis
   ): number {
-    let confidence = this.calculateConfidence(score);
+    let confidence = calculateConfidence(score);
 
     // Adjust confidence based on AI analysis
     if (aiAnalysis.skillTransferability.length > 0) {
       const avgTransferability =
         aiAnalysis.skillTransferability.reduce(
-          (sum: number, item: any) => sum + item.transferabilityScore,
+          (sum, item) => sum + item.transferabilityScore,
           0
         ) / aiAnalysis.skillTransferability.length;
-      confidence += avgTransferability * 0.1; // Boost confidence for good transferability
+      confidence += avgTransferability * config.transferabilityWeight;
     }
 
     if (aiAnalysis.culturalFit) {
-      confidence += aiAnalysis.culturalFit.culturalFitScore * 0.05; // Small boost for cultural fit
+      confidence +=
+        aiAnalysis.culturalFit.culturalFitScore * config.culturalFitWeight;
     }
 
     if (aiAnalysis.experienceValidation.length > 0) {
       const avgValidationConfidence =
         aiAnalysis.experienceValidation.reduce(
-          (sum: number, item: any) => sum + item.confidence,
+          (sum, item) => sum + item.confidence,
           0
         ) / aiAnalysis.experienceValidation.length;
-      confidence += avgValidationConfidence * 0.05; // Small boost for validated experience
+      confidence += avgValidationConfidence * config.confidenceBoostFactor;
     }
 
     return Math.min(1.0, Math.max(0.3, confidence));
   }
 
-  /**
-   * Get skill suggestions for a candidate based on job requirements
-   */
-  public getSkillSuggestions(candidateId: string, jobId: string): string[] {
+  // Get skill suggestions for a candidate based on job requirements
+  function getSkillSuggestions(candidateId: string, jobId: string): string[] {
     const candidate = findCandidateById(candidateId);
     const job = findJobById(jobId);
 
@@ -657,43 +623,43 @@ export class MatchingService {
       return [];
     }
 
-    const suggestions: string[] = [];
-    const candidateSkills = new Set(candidate.skills);
+    const missingSkills = job.requirements.filter(
+      (req) => !candidate.skills.includes(req.skillId)
+    );
 
-    for (const requirement of job.requirements) {
-      if (!candidateSkills.has(requirement.skillId)) {
-        const skill = skillNormalizer.getSkillById(requirement.skillId);
-        if (skill) {
-          suggestions.push(skill.canonicalName);
-        }
-      }
-    }
-
-    return suggestions;
+    return missingSkills
+      .map((req) => skillNormalizer.getSkillById(req.skillId)?.canonicalName)
+      .filter(Boolean) as string[];
   }
 
-  /**
-   * Get job suggestions for a candidate
-   */
-  public async getJobSuggestions(
+  // Get job suggestions for a candidate
+  async function getJobSuggestions(
     candidateId: string,
     limit: number = 5
   ): Promise<Job[]> {
-    const results = await this.matchCandidateAgainstAllJobs(candidateId);
+    const results = await matchCandidateAgainstAllJobs(candidateId);
     return results.slice(0, limit).map((result) => result.job);
   }
 
-  /**
-   * Get candidate suggestions for a job
-   */
-  public async getCandidateSuggestions(
+  // Get candidate suggestions for a job
+  async function getCandidateSuggestions(
     jobId: string,
     limit: number = 5
   ): Promise<Candidate[]> {
-    const results = await this.findCandidatesForJob(jobId, limit);
+    const results = await findCandidatesForJob(jobId, limit);
     return results.map((result) => result.candidate);
   }
+
+  // Return the public API
+  return {
+    match,
+    matchCandidateAgainstAllJobs,
+    findCandidatesForJob,
+    getSkillSuggestions,
+    getJobSuggestions,
+    getCandidateSuggestions,
+  };
 }
 
-// Export a singleton instance
-export const matchingService = new MatchingService();
+// Export a singleton instance for backward compatibility
+export const matchingService = createMatchingService();

@@ -10,10 +10,10 @@ interface CandidateInputProps {
   selectedCandidateId: string;
 }
 
-export default function CandidateInput({
+const CandidateInput = ({
   onCandidateSelect,
   selectedCandidateId,
-}: CandidateInputProps) {
+}: CandidateInputProps) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
     null
@@ -360,4 +360,6 @@ export default function CandidateInput({
       )}
     </div>
   );
-}
+};
+
+export default CandidateInput;

@@ -10,10 +10,7 @@ interface JobInputProps {
   selectedJobId: string;
 }
 
-export default function JobInput({
-  onJobSelect,
-  selectedJobId,
-}: JobInputProps) {
+const JobInput = ({ onJobSelect, selectedJobId }: JobInputProps) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -292,4 +289,6 @@ export default function JobInput({
       )}
     </div>
   );
-}
+};
+
+export default JobInput;

@@ -4,7 +4,7 @@ interface WelcomeGuideProps {
   onDismiss: () => void;
 }
 
-export default function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
+const WelcomeGuide = ({ onDismiss }: WelcomeGuideProps) => {
   const [currentStep, setCurrentStep] = useState(0);
 
   const steps = [
@@ -131,4 +131,6 @@ export default function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
       </div>
     </div>
   );
-}
+};
+
+export default WelcomeGuide;

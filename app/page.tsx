@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { MatchingResult } from "./types/matching";
 import JobInput from "./components/JobInput";
 import CandidateInput from "./components/CandidateInput";
 import MatchingResults from "./components/MatchingResults";
@@ -13,8 +12,9 @@ import StatusIndicator from "./components/StatusIndicator";
 import MatchingProgress from "./components/MatchingProgress";
 import WelcomeGuide from "./components/WelcomeGuide";
 import Tooltip from "./components/Tooltip";
+import { MatchingResult } from "./types/matching";
 
-export default function Page() {
+const Page = () => {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
   const [matchingResult, setMatchingResult] = useState<MatchingResult | null>(
@@ -156,6 +156,7 @@ export default function Page() {
                 AI-powered matching that goes beyond simple text comparison
               </p>
             </div>
+
             <div className="flex items-center space-x-4">
               <StatusIndicator status={getStatus()} />
               <Tooltip content="Get help and learn how to use the system">
@@ -396,4 +397,6 @@ export default function Page() {
       </footer>
     </div>
   );
-}
+};
+
+export default Page;

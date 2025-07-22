@@ -3,10 +3,7 @@ interface StatusIndicatorProps {
   message?: string;
 }
 
-export default function StatusIndicator({
-  status,
-  message,
-}: StatusIndicatorProps) {
+const StatusIndicator = ({ status, message }: StatusIndicatorProps) => {
   const statusConfig = {
     idle: {
       icon: "⏳",
@@ -44,4 +41,6 @@ export default function StatusIndicator({
       <span>{message || config.text}</span>
     </div>
   );
-}
+};
+
+export default StatusIndicator;
