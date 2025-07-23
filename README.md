@@ -1,113 +1,105 @@
 # Advanced Candidate Matching System
 
-An AI-augmented candidate-job matching system that goes beyond simple text comparison to address skill equivalence, experience depth, and potential fit using advanced algorithms and LLM integration.
+A modern, AI-powered candidate-job matching system built with Next.js 15, TypeScript, and Tailwind CSS. This project implements intelligent matching algorithms that go beyond simple text comparison to address skill equivalence, experience depth, and potential fit using advanced AI integration.
 
 ## 🚀 Features
 
-- **AI-Augmented Matching**: Uses OpenAI GPT-3.5-turbo for intelligent skill analysis
-- **Skill Normalization**: Identifies equivalent skills (e.g., "React" vs "ReactJS")
-- **Multi-factor Scoring**: Considers skill match, experience, transferable skills, and potential
-- **Explainable AI**: Provides detailed breakdowns and recommendations
-- **Knowledge Graph**: In-memory representation of skills, aliases, and relationships
-- **Modern UI**: Built with Next.js 14, TypeScript, and Tailwind CSS
-- **Production Ready**: Error boundaries, rate limiting, caching, and retry logic
+### Core Matching System
 
-## 🏗️ System Architecture
+- **AI-Augmented Matching** - OpenAI GPT-3.5-turbo integration for intelligent skill analysis
+- **Multi-factor Scoring** - Comprehensive scoring algorithm considering skill match, experience, transferable skills, and potential
+- **Skill Normalization** - Identifies equivalent skills (e.g., "React" vs "ReactJS") with fuzzy matching
+- **Knowledge Graph** - In-memory representation of skills, aliases, and relationships
+- **Explainable AI** - Detailed breakdowns, recommendations, and confidence levels
 
-### Frontend
+### User Interface
 
-- **Next.js 14 (App Router)**: Modern React framework with server-side rendering
-- **TypeScript**: Type-safe development
-- **Tailwind CSS**: Utility-first styling
-- **React Components**: Modular, reusable UI components with memoization
+- **Interactive Dashboard** - Modern, responsive UI with real-time matching results
+- **Progress Indicators** - Visual feedback during matching process
+- **Knowledge Graph Visualization** - Interactive skill relationship explorer
+- **Score Breakdown** - Detailed analysis with visual charts and metrics
+- **Mobile-Responsive Design** - Optimized for all device sizes
 
-### Backend
+### Error Handling & Performance
 
-- **Next.js API Routes**: Serverless functions for backend logic
-- **Node.js**: JavaScript runtime
-- **In-memory Storage**: For demo purposes (easily extensible to database)
+- **Global Error Boundaries** - Graceful error handling with recovery options
+- **Loading States** - Skeleton loaders and progress indicators
+- **Rate Limiting** - 1-second delay between AI API calls
+- **Retry Logic** - Exponential backoff for resilience
+- **Mock Mode** - Graceful fallback when API key not available
 
-### AI Integration
+## 🛠️ Tech Stack
 
-- **OpenAI GPT-3.5-turbo**: LLM for intelligent analysis
-- **Rate Limiting**: 1-second delay between API calls
-- **Retry Logic**: Exponential backoff for resilience
-- **Caching**: In-memory cache for AI responses
-- **Mock Mode**: Graceful fallback when API key not available
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **AI Integration**: OpenAI GPT-3.5-turbo
+- **State Management**: React hooks
+- **Testing**: Jest with TypeScript support
+- **Package Manager**: npm/pnpm
+- **Development**: Turbopack for faster builds
 
-### Core Services
+## 📁 Project Structure
 
-- **Matching Service**: Orchestrates the matching process
-- **Scoring Engine**: Multi-factor scoring algorithm
-- **Skill Normalizer**: Handles skill equivalence and extraction
-- **AI Service**: Centralized LLM integration with error handling
+```structure
+advanced-candidate-matching-system/
+├── app/                          # Next.js App Router
+│   ├── layout.tsx               # Root layout with metadata
+│   ├── page.tsx                 # Main dashboard page
+│   ├── globals.css              # Global styles
+│   ├── favicon.ico              # Site favicon
+│   ├── api/                     # API routes
+│   │   ├── matching/            # Matching endpoint
+│   │   ├── skills/              # Skills endpoint
+│   │   ├── knowledge/           # Knowledge graph endpoint
+│   │   └── ai-status/           # AI service status
+│   ├── components/              # React components
+│   │   ├── JobInput.tsx         # Job selection component
+│   │   ├── CandidateInput.tsx   # Candidate selection component
+│   │   ├── MatchingResults.tsx  # Results display
+│   │   ├── ScoreBreakdown.tsx   # Score analysis
+│   │   ├── KnowledgeGraph.tsx   # Skill graph visualization
+│   │   ├── LoadingSpinner.tsx   # Loading component
+│   │   ├── StatusIndicator.tsx  # Status display
+│   │   ├── MatchingProgress.tsx # Progress indicator
+│   │   ├── WelcomeGuide.tsx     # Onboarding guide
+│   │   └── Tooltip.tsx          # Tooltip component
+│   ├── data/                    # Sample data
+│   │   ├── sampleCandidates.ts  # Candidate data
+│   │   ├── sampleJobs.ts        # Job data
+│   │   └── skills.ts            # Skills knowledge graph
+│   ├── lib/                     # Core business logic
+│   │   ├── matchingService.ts   # Main matching orchestration
+│   │   ├── scoringEngine.ts     # Multi-factor scoring algorithm
+│   │   ├── aiService.ts         # AI integration service
+│   │   ├── skillNormalizer.ts   # Skill normalization
+│   │   ├── config.ts            # Configuration
+│   │   └── performanceOptimizer.ts # Performance optimization
+│   └── types/                   # TypeScript types
+│       └── matching.ts          # Core type definitions
+├── public/                      # Static assets
+├── package.json                 # Dependencies and scripts
+├── tsconfig.json                # TypeScript configuration
+├── next.config.ts               # Next.js configuration
+├── jest.config.js               # Jest configuration
+├── eslint.config.mjs            # ESLint configuration
+└── env.template                 # Environment variables template
+```
 
-## 🎯 Design Decisions
-
-### 1. AI-Augmented Matching
-
-**Challenge**: Simple text comparison fails to capture skill equivalence and context.
-**Solution**:
-
-- LLM integration for semantic understanding
-- Skill transferability analysis
-- Cultural fit assessment
-- Learning potential evaluation
-- Experience validation
-
-### 2. Skill Normalization
-
-**Challenge**: Different terms for the same skill (React vs ReactJS).
-**Solution**:
-
-- Comprehensive knowledge graph with aliases
-- Fuzzy matching for similar skills
-- Canonical skill names for consistency
-
-### 3. Multi-factor Scoring
-
-**Challenge**: Single score doesn't capture complexity of job-candidate fit.
-**Solution**:
-
-- Skill match score (40%)
-- Experience score (25%)
-- Transferable skills score (20%)
-- Potential score (15%)
-
-### 4. Explainable AI
-
-**Challenge**: Black-box matching systems lack transparency.
-**Solution**:
-
-- Detailed score breakdowns
-- Specific recommendations
-- Confidence levels with reasoning
-- Learning path suggestions
-
-### 5. Production Readiness
-
-**Challenge**: Demo systems often lack production features.
-**Solution**:
-
-- Error boundaries for graceful failure handling
-- Rate limiting to prevent API abuse
-- Retry logic with exponential backoff
-- In-memory caching for performance
-- Comprehensive error handling
-
-## 🔧 Setup Instructions
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- npm or pnpm
+- OpenAI API key (optional, mock mode available)
 
 ### Installation
 
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/dchobarkar/advanced-candidate-matching-system.git
    cd advanced-candidate-matching-system
    ```
 
@@ -115,6 +107,8 @@ An AI-augmented candidate-job matching system that goes beyond simple text compa
 
    ```bash
    npm install
+   # or
+   pnpm install
    ```
 
 3. **Set up environment variables**
@@ -123,9 +117,9 @@ An AI-augmented candidate-job matching system that goes beyond simple text compa
    cp env.template .env.local
    ```
 
-   Edit `.env.local` and add your OpenAI API key:
+   Edit `.env.local` and add your OpenAI API key (optional):
 
-   ```
+   ```env
    OPENAI_API_KEY=your_openai_api_key_here
    ```
 
@@ -133,15 +127,41 @@ An AI-augmented candidate-job matching system that goes beyond simple text compa
 
    ```bash
    npm run dev
+   # or
+   pnpm dev
    ```
 
 5. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Running Tests
+## 🧪 Development
+
+### Code Quality
+
+- TypeScript for type safety
+- ESLint for code linting
+- Jest for unit testing
+- Component-based architecture
+
+### Performance
+
+- Next.js Image optimization
+- Code splitting with dynamic imports
+- Optimized bundle sizes
+- In-memory caching for AI responses
+- Turbopack for faster development
+
+### Testing
 
 ```bash
+# Run tests
 npm test
+
+# Run tests with coverage
+npm test -- --coverage
+
+# Run tests in watch mode
+npm test -- --watch
 ```
 
 ## 📚 API Documentation
@@ -156,7 +176,7 @@ Matches a candidate to a job.
 
 ```json
 {
-  "jobId": "job-1",
+  "jobId": "senior-react-developer",
   "candidateId": "candidate-1"
 }
 ```
@@ -185,7 +205,9 @@ Matches a candidate to a job.
     "explanation": "Detailed explanation of the match...",
     "recommendations": ["Recommendation 1", "Recommendation 2"],
     "confidence": 0.85
-  }
+  },
+  "processingTime": 1250,
+  "confidence": 0.85
 }
 ```
 
@@ -200,36 +222,6 @@ Returns the complete knowledge graph data.
 #### `GET /api/ai-status`
 
 Returns the status of the AI service and available functions.
-
-## 🧪 Testing
-
-The project includes comprehensive testing:
-
-- **Unit Tests**: Core business logic (matching, scoring, normalization)
-- **Integration Tests**: End-to-end matching flow
-- **Code Coverage**: Jest coverage reporting
-
-Run tests with:
-
-```bash
-npm test
-```
-
-## 🚀 Scalability Considerations
-
-### Current Architecture
-
-- **In-memory storage**: Suitable for demo and small-scale use
-- **Serverless API routes**: Auto-scaling with Next.js
-- **Caching**: Reduces API calls and improves performance
-
-### Future Scalability
-
-- **Database Integration**: Replace in-memory storage with PostgreSQL/MongoDB
-- **Redis Caching**: Distributed caching for high-traffic scenarios
-- **Microservices**: Split into separate services for different domains
-- **Queue System**: Background processing for heavy AI operations
-- **CDN**: Static asset delivery optimization
 
 ## 🎨 Demo Scenarios
 
@@ -257,71 +249,69 @@ npm test
 - **Candidate**: Enterprise background, methodical approach
 - **Expected**: Lower score with cultural fit considerations
 
-## 🔍 How Challenges Were Addressed
+## 🔍 System Architecture
 
-### 1. Skill Equivalence
+### Core Services
 
-- **Problem**: "React" vs "ReactJS" treated as different skills
-- **Solution**: Comprehensive knowledge graph with aliases and fuzzy matching
+- **Matching Service** - Orchestrates the matching process with AI integration
+- **Scoring Engine** - Multi-factor scoring algorithm (skill match 40%, experience 30%, transferable skills 20%, potential 10%)
+- **Skill Normalizer** - Handles skill equivalence and extraction with fuzzy matching
+- **AI Service** - Centralized LLM integration with error handling and mock mode
 
-### 2. Experience Depth
+### Data Flow
 
-- **Problem**: Years of experience doesn't capture skill proficiency
-- **Solution**: AI analysis of experience descriptions and skill usage context
+1. **Job/Candidate Selection** - User selects from sample data
+2. **Matching Process** - AI-enhanced analysis with multiple scoring factors
+3. **Result Generation** - Detailed breakdown with explanations and recommendations
+4. **Visualization** - Interactive knowledge graph and score breakdown
 
-### 3. Transferable Skills
+## 🚀 Scalability Considerations
 
-- **Problem**: Missing skills treated as complete disqualification
-- **Solution**: AI-powered transferability analysis and learning potential assessment
+### Current Architecture
 
-### 4. Cultural Fit
+- **In-memory storage**: Suitable for demo and small-scale use
+- **Serverless API routes**: Auto-scaling with Next.js
+- **Caching**: Reduces API calls and improves performance
 
-- **Problem**: Technical skills only, ignoring team dynamics
-- **Solution**: AI assessment of cultural alignment and work style compatibility
+### Future Scalability
 
-### 5. Explainability
+- **Database Integration**: Replace in-memory storage with PostgreSQL/MongoDB
+- **Redis Caching**: Distributed caching for high-traffic scenarios
+- **Microservices**: Split into separate services for different domains
+- **Queue System**: Background processing for heavy AI operations
+- **CDN**: Static asset delivery optimization
 
-- **Problem**: Black-box matching decisions
-- **Solution**: Detailed breakdowns, specific recommendations, and confidence levels
+## 📦 Available Scripts
 
-## 🛠️ Development
-
-### Project Structure
-
+```bash
+# Development
+npm run dev          # Start development server with Turbopack
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm test             # Run Jest tests
+npm test -- --coverage  # Run tests with coverage
 ```
-advanced-candidate-matching-system/
-├── app/
-│   ├── api/                 # API routes
-│   ├── components/          # React components
-│   ├── data/               # Sample data
-│   ├── lib/                # Core business logic
-│   └── types/              # TypeScript definitions
-├── public/                 # Static assets
-└── tests/                  # Test files
-```
-
-### Key Files
-
-- `app/lib/matchingService.ts`: Core matching logic
-- `app/lib/scoringEngine.ts`: Multi-factor scoring algorithm
-- `app/lib/aiService.ts`: AI integration with error handling
-- `app/lib/skillNormalizer.ts`: Skill normalization and extraction
-- `app/data/skills.ts`: Knowledge graph definition
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+Made with ❤️ by Darshan Jitendra Chobarkar
 
-- OpenAI for providing the GPT-3.5-turbo API
-- Next.js team for the excellent framework
-- Tailwind CSS for the utility-first styling approach
+## 💡 Author
+
+Built by [Darshan Chobarkar](https://github.com/dchobarkar)  
+LinkedIn: [https://www.linkedin.com/in/dchobarkar/](https://www.linkedin.com/in/dchobarkar/)
+
+---
+
+**Note**: This system can run in mock mode without an OpenAI API key for demonstration purposes.
