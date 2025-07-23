@@ -9,9 +9,12 @@ describe("skillNormalizer", () => {
 
   it("should extract skills from text", () => {
     const text = "Experienced in React, Node.js, and TypeScript.";
-    const skills = skillNormalizer.extractSkillsFromText(text);
-    expect(skills).toContain("React");
-    expect(skills).toContain("Node.js");
-    expect(skills).toContain("TypeScript");
+    const result = skillNormalizer.extractSkillsFromText(text);
+    expect(result.skills).toContain("React");
+    expect(result.skills).toContain("Node.js");
+    expect(result.skills).toContain("TypeScript");
+    expect(result.confidence).toBeGreaterThan(0);
+    expect(result.matchedTerms).toHaveLength(4); // react, js, typescript, node.js
+    expect(result.unmatchedTerms.length).toBeGreaterThan(0);
   });
 });

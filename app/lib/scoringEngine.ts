@@ -1,3 +1,4 @@
+import { skillNormalizer } from "./skillNormalizer";
 import {
   Candidate,
   Job,
@@ -7,7 +8,49 @@ import {
   ExperienceGap,
   Experience,
 } from "../types/matching";
-import { skillNormalizer } from "./skillNormalizer";
+
+// Type definitions for better type safety
+interface ScoringWeights {
+  skillMatch: number;
+  experience: number;
+  transferableSkills: number;
+  potential: number;
+}
+
+interface ScoringConfig {
+  weights: ScoringWeights;
+  defaultCacheExpiryMinutes: number;
+  maxRelatedSkillsBonus: number;
+  experienceNormalizationMonths: number;
+  degreeLevels: Record<string, number>;
+}
+
+interface SkillMatchResult {
+  score: number;
+  directMatches: string[];
+  relatedMatches: string[];
+  missingSkills: string[];
+}
+
+interface ExperienceResult {
+  score: number;
+  relevantExperience: Experience[];
+  gaps: ExperienceGap[];
+}
+
+interface TransferableSkillsResult {
+  score: number;
+  transferableSkills: Experience[];
+  transferabilityScores: number[];
+}
+
+interface PotentialResult {
+  score: number;
+  educationScore: number;
+  learningScore: number;
+  growthScore: number;
+  indicators: string[];
+}
 
 /**
  * Multi-factor scoring engine for candidate-job matching.
@@ -18,34 +61,60 @@ import { skillNormalizer } from "./skillNormalizer";
  *
  * Scoring Weights:
  * - Skill Match (40%): Direct and related skill matches
- * - Experience (25%): Depth and relevance of experience
+ * - Experience (30%): Depth and relevance of experience
  * - Transferable Skills (20%): Skills that can transfer to required skills
- * - Potential (15%): Learning ability, growth trajectory, education
+ * - Potential (10%): Learning ability, growth trajectory, education
  *
  * The scoring system provides explainable results with detailed breakdowns
  * showing matched skills, missing skills, experience gaps, and potential indicators.
  *
  * @example
  * ```typescript
+ * const scoringEngine = createScoringEngine();
  * const score = scoringEngine.calculateMatchingScore(candidate, job);
  * console.log(`Overall Score: ${score.overallScore}%`);
  * console.log(`Skill Match: ${score.skillMatchScore}%`);
  * ```
  */
-export class ScoringEngine {
-  private readonly SKILL_MATCH_WEIGHT = 0.4;
-  private readonly EXPERIENCE_WEIGHT = 0.3;
-  private readonly TRANSFERABLE_SKILLS_WEIGHT = 0.2;
-  private readonly POTENTIAL_WEIGHT = 0.1;
+
+// Create scoring engine with configuration
+export function createScoringEngine(): ReturnType<
+  typeof createScoringEngineInstance
+> {
+  return createScoringEngineInstance();
+}
+
+function createScoringEngineInstance() {
+  // Configuration
+  const config: ScoringConfig = {
+    weights: {
+      skillMatch: 0.4,
+      experience: 0.3,
+      transferableSkills: 0.2,
+      potential: 0.1,
+    },
+    defaultCacheExpiryMinutes: 5,
+    maxRelatedSkillsBonus: 0.3,
+    experienceNormalizationMonths: 24,
+    degreeLevels: {
+      phd: 3,
+      doctorate: 3,
+      master: 2,
+      bachelor: 1,
+      associate: 0.5,
+      diploma: 0.5,
+      certificate: 0.25,
+    },
+  };
 
   /**
    * Calculate the overall matching score between a candidate and job.
    *
    * This is the main scoring function that combines multiple factors:
    * 1. Skill match score (40% weight) - direct and related skill matches
-   * 2. Experience score (25% weight) - depth and relevance of experience
+   * 2. Experience score (30% weight) - depth and relevance of experience
    * 3. Transferable skills score (20% weight) - skills that can transfer
-   * 4. Potential score (15% weight) - learning ability and growth trajectory
+   * 4. Potential score (10% weight) - learning ability and growth trajectory
    *
    * The function returns a comprehensive score object with:
    * - Overall score (weighted average of all factors)
@@ -56,156 +125,208 @@ export class ScoringEngine {
    * @param job - The job to match against
    * @returns MatchingScore - Complete scoring result with breakdown
    */
-  public calculateMatchingScore(candidate: Candidate, job: Job): MatchingScore {
-    const skillMatchScore = this.calculateSkillMatchScore(
+  function calculateMatchingScore(
+    candidate: Candidate,
+    job: Job
+  ): MatchingScore {
+    const skillMatchResult = calculateSkillMatchScore(
       job.requirements,
       candidate
     );
-    const experienceScore = this.calculateExperienceScore(
+    const experienceResult = calculateExperienceScore(
       job.requirements,
       candidate
     );
-    const transferableSkillsScore = this.calculateTransferableSkillsScore(
+    const transferableSkillsResult = calculateTransferableSkillsScore(
       job.requirements,
       candidate
     );
-    const potentialScore = this.calculatePotentialScore(candidate);
+    const potentialResult = calculatePotentialScore(candidate);
 
     const overallScore =
-      skillMatchScore * this.SKILL_MATCH_WEIGHT +
-      experienceScore * this.EXPERIENCE_WEIGHT +
-      transferableSkillsScore * this.TRANSFERABLE_SKILLS_WEIGHT +
-      potentialScore * this.POTENTIAL_WEIGHT;
+      skillMatchResult.score * config.weights.skillMatch +
+      experienceResult.score * config.weights.experience +
+      transferableSkillsResult.score * config.weights.transferableSkills +
+      potentialResult.score * config.weights.potential;
 
-    const breakdown = this.generateScoreBreakdown(job.requirements, candidate);
+    const breakdown = generateScoreBreakdown(job.requirements, candidate);
 
     return {
       overallScore: Math.round(overallScore * 100) / 100,
-      skillMatchScore: Math.round(skillMatchScore * 100) / 100,
-      experienceScore: Math.round(experienceScore * 100) / 100,
-      transferableSkillsScore: Math.round(transferableSkillsScore * 100) / 100,
-      potentialScore: Math.round(potentialScore * 100) / 100,
+      skillMatchScore: Math.round(skillMatchResult.score * 100) / 100,
+      experienceScore: Math.round(experienceResult.score * 100) / 100,
+      transferableSkillsScore:
+        Math.round(transferableSkillsResult.score * 100) / 100,
+      potentialScore: Math.round(potentialResult.score * 100) / 100,
       breakdown,
     };
   }
 
   /**
    * Calculate skill match score (40% weight)
+   *
+   * @param requirements - Job requirements to match against
+   * @param candidate - Candidate to evaluate
+   * @returns SkillMatchResult with score and detailed breakdown
    */
-  private calculateSkillMatchScore(
+  function calculateSkillMatchScore(
     requirements: JobRequirement[],
     candidate: Candidate
-  ): number {
+  ): SkillMatchResult {
     let totalScore = 0;
     let totalWeight = 0;
+    const directMatches: string[] = [];
+    const relatedMatches: string[] = [];
+    const missingSkills: string[] = [];
 
     for (const requirement of requirements) {
       const weight = requirement.isRequired ? 2 : 1;
       totalWeight += weight;
 
-      const candidateSkill = this.findCandidateSkill(
-        requirement.skillId,
-        candidate
-      );
+      const candidateSkill = findCandidateSkill(requirement.skillId, candidate);
 
       if (candidateSkill) {
         // Direct match
         totalScore += weight * 1.0;
+        directMatches.push(requirement.skillId);
 
         // Related skills bonus
-        const relatedBonus = this.calculateRelatedSkillsBonus(
+        const relatedBonus = calculateRelatedSkillsBonus(
           requirement.skillId,
           candidate
         );
-        totalScore += weight * relatedBonus * 0.3;
+        totalScore += weight * relatedBonus * config.maxRelatedSkillsBonus;
       } else {
         // Check for related skills
-        const relatedBonus = this.calculateRelatedSkillsBonus(
+        const relatedBonus = calculateRelatedSkillsBonus(
           requirement.skillId,
           candidate
         );
         totalScore += weight * relatedBonus * 0.5;
+
+        if (relatedBonus > 0) {
+          relatedMatches.push(requirement.skillId);
+        } else {
+          missingSkills.push(requirement.skillId);
+        }
       }
     }
 
-    return totalWeight > 0 ? totalScore / totalWeight : 0;
+    return {
+      score: totalWeight > 0 ? totalScore / totalWeight : 0,
+      directMatches,
+      relatedMatches,
+      missingSkills,
+    };
   }
 
   /**
    * Calculate experience score (30% weight)
+   *
+   * @param requirements - Job requirements to match against
+   * @param candidate - Candidate to evaluate
+   * @returns ExperienceResult with score and detailed breakdown
    */
-  private calculateExperienceScore(
+  function calculateExperienceScore(
     requirements: JobRequirement[],
     candidate: Candidate
-  ): number {
+  ): ExperienceResult {
     let totalScore = 0;
     let totalWeight = 0;
+    const relevantExperience: Experience[] = [];
+    const gaps: ExperienceGap[] = [];
 
     for (const requirement of requirements) {
       const weight = requirement.isRequired ? 2 : 1;
       totalWeight += weight;
 
-      const relevantExperience = this.findRelevantExperience(
-        requirement.skillId,
-        candidate
-      );
+      const experience = findRelevantExperience(requirement.skillId, candidate);
 
-      if (relevantExperience) {
+      if (experience) {
+        relevantExperience.push(experience);
+
         // Duration factor (0-1)
         const durationScore = Math.min(
-          relevantExperience.duration / requirement.minDuration,
+          experience.duration / requirement.minDuration,
           1.0
         );
 
         // Complexity factor (0-1)
-        const complexityScore = relevantExperience.complexityLevel / 5.0;
+        const complexityScore = experience.complexityLevel / 5.0;
 
         // Leadership factor
-        const leadershipScore = relevantExperience.hasLeadershipRole
-          ? 1.0
-          : 0.5;
+        const leadershipScore = experience.hasLeadershipRole ? 1.0 : 0.5;
 
         // Level alignment factor
-        const levelScore = this.calculateLevelAlignment(
-          relevantExperience.complexityLevel,
+        const levelScore = calculateLevelAlignment(
+          experience.complexityLevel,
           requirement.requiredLevel
         );
 
         const experienceScore =
           (durationScore + complexityScore + leadershipScore + levelScore) / 4;
         totalScore += weight * experienceScore;
+
+        // Calculate gap if any
+        const gap = Math.max(0, requirement.minDuration - experience.duration);
+        if (gap > 0) {
+          gaps.push({
+            skillId: requirement.skillId,
+            requiredDuration: requirement.minDuration,
+            candidateDuration: experience.duration,
+            gap,
+            learnability: calculateLearnability(requirement.skillId, candidate),
+          });
+        }
       } else {
         // No relevant experience
         totalScore += weight * 0.1;
+
+        gaps.push({
+          skillId: requirement.skillId,
+          requiredDuration: requirement.minDuration,
+          candidateDuration: 0,
+          gap: requirement.minDuration,
+          learnability: calculateLearnability(requirement.skillId, candidate),
+        });
       }
     }
 
-    return totalWeight > 0 ? totalScore / totalWeight : 0;
+    return {
+      score: totalWeight > 0 ? totalScore / totalWeight : 0,
+      relevantExperience,
+      gaps,
+    };
   }
 
   /**
    * Calculate transferable skills score (20% weight)
+   *
+   * @param requirements - Job requirements to match against
+   * @param candidate - Candidate to evaluate
+   * @returns TransferableSkillsResult with score and detailed breakdown
    */
-  private calculateTransferableSkillsScore(
+  function calculateTransferableSkillsScore(
     requirements: JobRequirement[],
     candidate: Candidate
-  ): number {
+  ): TransferableSkillsResult {
     let totalScore = 0;
     let totalWeight = 0;
+    const transferableSkills: Experience[] = [];
+    const transferabilityScores: number[] = [];
 
     for (const requirement of requirements) {
       const weight = requirement.isRequired ? 2 : 1;
       totalWeight += weight;
 
       // Find transferable skills
-      const transferableSkills = this.findTransferableSkills(
-        requirement.skillId,
-        candidate
-      );
+      const skills = findTransferableSkills(requirement.skillId, candidate);
 
-      if (transferableSkills.length > 0) {
+      if (skills.length > 0) {
+        transferableSkills.push(...skills);
+
         // Calculate average transferability score
-        const transferabilityScores = transferableSkills.map((skill) => {
+        const scores = skills.map((skill) => {
           const skillData = skillNormalizer.getSkillById(skill.skillId);
           const requiredSkillData = skillNormalizer.getSkillById(
             requirement.skillId
@@ -222,132 +343,102 @@ export class ScoringEngine {
               5;
 
           // Experience factor
-          const experienceFactor = Math.min(skill.duration / 24, 1.0); // Normalize to 2 years
+          const experienceFactor = Math.min(
+            skill.duration / config.experienceNormalizationMonths,
+            1.0
+          );
 
           return baseTransferability * experienceFactor;
         });
 
+        transferabilityScores.push(...scores);
         const avgTransferability =
-          transferabilityScores.reduce((sum, score) => sum + score, 0) /
-          transferabilityScores.length;
+          scores.reduce((sum, score) => sum + score, 0) / scores.length;
         totalScore += weight * avgTransferability;
       } else {
         totalScore += weight * 0;
       }
     }
 
-    return totalWeight > 0 ? totalScore / totalWeight : 0;
+    return {
+      score: totalWeight > 0 ? totalScore / totalWeight : 0,
+      transferableSkills,
+      transferabilityScores,
+    };
   }
 
   /**
    * Calculate potential score (10% weight)
+   *
+   * @param candidate - Candidate to evaluate
+   * @returns PotentialResult with score and detailed breakdown
    */
-  private calculatePotentialScore(candidate: Candidate): number {
-    let potentialScore = 0;
-
+  function calculatePotentialScore(candidate: Candidate): PotentialResult {
     // Education factor
-    const educationScore = this.calculateEducationScore(candidate.education);
-    potentialScore += educationScore * 0.3;
+    const educationScore = calculateEducationScore(candidate.education);
 
     // Learning indicators
-    const learningScore = this.calculateLearningIndicators(candidate);
-    potentialScore += learningScore * 0.4;
+    const learningScore = calculateLearningIndicators(candidate);
 
     // Growth trajectory
-    const growthScore = this.calculateGrowthTrajectory(candidate);
-    potentialScore += growthScore * 0.3;
+    const growthScore = calculateGrowthTrajectory(candidate);
 
-    return potentialScore;
-  }
+    const potentialScore =
+      educationScore * 0.3 + learningScore * 0.4 + growthScore * 0.3;
 
-  /**
-   * Generate detailed score breakdown
-   */
-  private generateScoreBreakdown(
-    requirements: JobRequirement[],
-    candidate: Candidate
-  ): ScoreBreakdown {
-    const matchedSkills: string[] = [];
-    const missingSkills: string[] = [];
-    const relatedSkills: string[] = [];
-    const experienceGaps: ExperienceGap[] = [];
-    const potentialIndicators: string[] = [];
-    const riskFactors: string[] = [];
+    // Identify potential indicators
+    const indicators: string[] = [];
 
-    // Analyze each requirement
-    for (const requirement of requirements) {
-      const candidateSkill = this.findCandidateSkill(
-        requirement.skillId,
-        candidate
-      );
-      const relevantExperience = this.findRelevantExperience(
-        requirement.skillId,
-        candidate
-      );
-
-      if (candidateSkill) {
-        matchedSkills.push(requirement.skillId);
-      } else {
-        missingSkills.push(requirement.skillId);
-      }
-
-      // Find related skills
-      const related = this.findTransferableSkills(
-        requirement.skillId,
-        candidate
-      );
-      related.forEach((skill) => {
-        if (!relatedSkills.includes(skill.skillId)) {
-          relatedSkills.push(skill.skillId);
-        }
-      });
-
-      // Calculate experience gaps
-      if (relevantExperience) {
-        const gap = Math.max(
-          0,
-          requirement.minDuration - relevantExperience.duration
-        );
-        if (gap > 0) {
-          experienceGaps.push({
-            skillId: requirement.skillId,
-            requiredDuration: requirement.minDuration,
-            candidateDuration: relevantExperience.duration,
-            gap,
-            learnability: this.calculateLearnability(
-              requirement.skillId,
-              candidate
-            ),
-          });
-        }
-      } else {
-        experienceGaps.push({
-          skillId: requirement.skillId,
-          requiredDuration: requirement.minDuration,
-          candidateDuration: 0,
-          gap: requirement.minDuration,
-          learnability: this.calculateLearnability(
-            requirement.skillId,
-            candidate
-          ),
-        });
-      }
-    }
-
-    // Analyze potential indicators
     if (
       candidate.education.some((edu) =>
         edu.field.toLowerCase().includes("computer")
       )
     ) {
-      potentialIndicators.push(
-        "Strong educational background in computer science"
-      );
+      indicators.push("Strong educational background in computer science");
     }
 
     if (candidate.experience.some((exp) => exp.hasLeadershipRole)) {
-      potentialIndicators.push("Demonstrated leadership experience");
+      indicators.push("Demonstrated leadership experience");
     }
+
+    if (candidate.skills.length > 5) {
+      indicators.push("Diverse skill set");
+    }
+
+    if (candidate.education.some((edu) => 2024 - edu.graduationYear <= 5)) {
+      indicators.push("Recent education");
+    }
+
+    return {
+      score: potentialScore,
+      educationScore,
+      learningScore,
+      growthScore,
+      indicators,
+    };
+  }
+
+  /**
+   * Generate detailed score breakdown
+   *
+   * @param requirements - Job requirements to match against
+   * @param candidate - Candidate to evaluate
+   * @returns ScoreBreakdown with comprehensive analysis
+   */
+  function generateScoreBreakdown(
+    requirements: JobRequirement[],
+    candidate: Candidate
+  ): ScoreBreakdown {
+    const skillMatchResult = calculateSkillMatchScore(requirements, candidate);
+    const experienceResult = calculateExperienceScore(requirements, candidate);
+    const potentialResult = calculatePotentialScore(candidate);
+
+    const matchedSkills = skillMatchResult.directMatches;
+    const missingSkills = skillMatchResult.missingSkills;
+    const relatedSkills = skillMatchResult.relatedMatches;
+    const experienceGaps = experienceResult.gaps;
+    const potentialIndicators = potentialResult.indicators;
+    const riskFactors: string[] = [];
 
     // Identify risk factors
     if (missingSkills.length > requirements.length * 0.5) {
@@ -356,6 +447,10 @@ export class ScoringEngine {
 
     if (experienceGaps.some((gap) => gap.gap > 12)) {
       riskFactors.push("Large experience gaps in key areas");
+    }
+
+    if (candidate.experience.length < 2) {
+      riskFactors.push("Limited work experience");
     }
 
     return {
@@ -369,21 +464,21 @@ export class ScoringEngine {
   }
 
   // Helper methods
-  private findCandidateSkill(
+  function findCandidateSkill(
     skillId: string,
     candidate: Candidate
   ): string | undefined {
     return candidate.skills.find((skill) => skill === skillId);
   }
 
-  private findRelevantExperience(
+  function findRelevantExperience(
     skillId: string,
     candidate: Candidate
   ): Experience | undefined {
     return candidate.experience.find((exp) => exp.skillId === skillId);
   }
 
-  private findTransferableSkills(
+  function findTransferableSkills(
     skillId: string,
     candidate: Candidate
   ): Experience[] {
@@ -399,24 +494,21 @@ export class ScoringEngine {
     });
   }
 
-  private calculateRelatedSkillsBonus(
+  function calculateRelatedSkillsBonus(
     requiredSkillId: string,
     candidate: Candidate
   ): number {
-    const relatedSkills = this.findTransferableSkills(
-      requiredSkillId,
-      candidate
-    );
+    const relatedSkills = findTransferableSkills(requiredSkillId, candidate);
     if (relatedSkills.length === 0) return 0;
 
     // Calculate average experience level of related skills
     const avgExperience =
       relatedSkills.reduce((sum, skill) => sum + skill.duration, 0) /
       relatedSkills.length;
-    return Math.min(avgExperience / 24, 1.0); // Normalize to 2 years
+    return Math.min(avgExperience / config.experienceNormalizationMonths, 1.0);
   }
 
-  private calculateLevelAlignment(
+  function calculateLevelAlignment(
     candidateLevel: number,
     requiredLevel: number
   ): number {
@@ -424,29 +516,32 @@ export class ScoringEngine {
     return Math.max(0, 1 - levelDiff / 5);
   }
 
-  private calculateEducationScore(
+  function calculateEducationScore(
     education: { degree: string; field: string; graduationYear: number }[]
   ): number {
     if (education.length === 0) return 0.3;
 
     const highestDegree = education.reduce((highest, edu) => {
-      const degreeLevel = this.getDegreeLevel(edu.degree);
+      const degreeLevel = getDegreeLevel(edu.degree);
       return degreeLevel > highest ? degreeLevel : highest;
     }, 0);
 
     return Math.min(highestDegree / 3, 1.0); // Normalize to PhD level
   }
 
-  private getDegreeLevel(degree: string): number {
+  function getDegreeLevel(degree: string): number {
     const degreeLower = degree.toLowerCase();
-    if (degreeLower.includes("phd") || degreeLower.includes("doctorate"))
-      return 3;
-    if (degreeLower.includes("master")) return 2;
-    if (degreeLower.includes("bachelor")) return 1;
+
+    for (const [key, level] of Object.entries(config.degreeLevels)) {
+      if (degreeLower.includes(key)) {
+        return level;
+      }
+    }
+
     return 0;
   }
 
-  private calculateLearningIndicators(candidate: Candidate): number {
+  function calculateLearningIndicators(candidate: Candidate): number {
     let indicators = 0;
     let total = 0;
 
@@ -474,7 +569,7 @@ export class ScoringEngine {
     return total > 0 ? indicators / total : 0;
   }
 
-  private calculateGrowthTrajectory(candidate: Candidate): number {
+  function calculateGrowthTrajectory(candidate: Candidate): number {
     if (candidate.experience.length < 2) return 0.5;
 
     // Sort experience by duration to see progression
@@ -496,7 +591,10 @@ export class ScoringEngine {
     return complexityIncrease / (sortedExperience.length - 1);
   }
 
-  private calculateLearnability(skillId: string, candidate: Candidate): number {
+  function calculateLearnability(
+    skillId: string,
+    candidate: Candidate
+  ): number {
     const skill = skillNormalizer.getSkillById(skillId);
     if (!skill) return 0.5;
 
@@ -504,11 +602,21 @@ export class ScoringEngine {
     const baseLearnability = 1 - skill.difficultyLevel / 5;
 
     // Adjust based on candidate's learning indicators
-    const learningIndicators = this.calculateLearningIndicators(candidate);
+    const learningIndicators = calculateLearningIndicators(candidate);
 
     return Math.min(1, baseLearnability + learningIndicators * 0.3);
   }
+
+  // Return the public API
+  return {
+    calculateMatchingScore,
+    calculateSkillMatchScore,
+    calculateExperienceScore,
+    calculateTransferableSkillsScore,
+    calculatePotentialScore,
+    generateScoreBreakdown,
+  };
 }
 
-// Export a singleton instance
-export const scoringEngine = new ScoringEngine();
+// Export a singleton instance for backward compatibility
+export const scoringEngine = createScoringEngine();

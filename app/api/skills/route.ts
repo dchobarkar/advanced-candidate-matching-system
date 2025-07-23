@@ -69,11 +69,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract skills from text
-    const extractedSkills = skillNormalizer.extractSkillsFromText(text);
+    const extractionResult = skillNormalizer.extractSkillsFromText(text);
 
     return NextResponse.json({
-      extractedSkills,
-      count: extractedSkills.length,
+      extractedSkills: extractionResult.skills,
+      count: extractionResult.skills.length,
+      confidence: extractionResult.confidence,
+      matchedTerms: extractionResult.matchedTerms,
+      unmatchedTerms: extractionResult.unmatchedTerms,
     });
   } catch (error) {
     console.error("Skills extraction API error:", error);
