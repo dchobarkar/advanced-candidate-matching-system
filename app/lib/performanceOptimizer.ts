@@ -6,11 +6,6 @@ interface CacheEntry<T> {
   expiryTime: number;
 }
 
-interface DebounceTimer {
-  timer: NodeJS.Timeout;
-  key: string;
-}
-
 interface PerformanceOptimizerConfig {
   defaultCacheExpiryMinutes: number;
   autoCleanupIntervalMinutes: number;
@@ -218,7 +213,8 @@ function createPerformanceOptimizerInstance() {
       activeEntries: activeCount,
       memoryUsage:
         typeof performance !== "undefined" && "memory" in performance
-          ? (performance as any).memory?.usedJSHeapSize
+          ? (performance as { memory?: { usedJSHeapSize?: number } }).memory
+              ?.usedJSHeapSize
           : undefined,
     };
   }
